@@ -4,10 +4,11 @@ import android.content.Context;
 import android.text.TextUtils;
 
 import com.mapbox.mapboxsdk.geometry.LatLng;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.mapbox.services.commons.geojson.Feature;
+import com.mapbox.services.commons.geojson.FeatureCollection;
+import com.mapbox.services.commons.geojson.Geometry;
+import com.mapbox.services.commons.geojson.Point;
+import com.mapbox.services.commons.models.Position;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -29,35 +30,17 @@ public class GeoParseUtil {
     return readAll(rd);
   }
 
-  public static List<LatLng> parseGeoJsonCoordinates(String geojsonStr) throws JSONException {
+  public static List<LatLng> parseGeoJsonCoordinates(String geojsonStr) {
     List<LatLng> latLngs = new ArrayList<>();
-    JSONObject jsonObject = new JSONObject(geojsonStr);
-    JSONArray features = jsonObject.getJSONArray("features");
-    int featureLength = features.length();
-    for (int j = 0; j < featureLength; ++j) {
-      JSONObject feature = features.getJSONObject(j);
-      JSONObject geometry = feature.getJSONObject("geometry");
-      String type = geometry.getString("type");
-      JSONArray coordinates;
-      if (type.equals("Polygon")) {
-        coordinates = geometry.getJSONArray("coordinates").getJSONArray(0);
-      } else {
-        coordinates = geometry.getJSONArray("coordinates");
-      }
-      int len = coordinates.length();
-      for (int i = 0; i < len; ++i) {
-        if (coordinates.get(i) instanceof JSONArray) {
-          JSONArray coord = coordinates.getJSONArray(i);
-          double lng = coord.getDouble(0);
-          double lat = coord.getDouble(1);
-          latLngs.add(new LatLng(lat, lng));
-        } else {
-          double lng = coordinates.getDouble(0);
-          double lat = coordinates.getDouble(1);
-          latLngs.add(new LatLng(lat, lng));
-          break;
-        }
-      }
+    FeatureCollection featureCollection = FeatureCollection.fromJson(geojsonStr);
+
+    Geometry<Point> geometry;
+    Position point;
+
+    for (Feature feature : featureCollection.getFeatures()) {
+      geometry = feature.getGeometry();
+      point = geometry.getCoordinates().getCoordinates();
+      latLngs.add(new LatLng(point.getLatitude(), point.getLongitude()));
     }
     return latLngs;
   }
